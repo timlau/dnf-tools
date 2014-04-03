@@ -25,6 +25,7 @@ if here != '/usr/bin':
 
 from dnftools import _, logger, ToolBase
 from dnf.cli.output import Output
+import hawkey
 
 class TestTool(ToolBase):
     name = "Test-tool"  # set in child class
@@ -39,7 +40,7 @@ class TestTool(ToolBase):
         """ Add tool specific command line options """
         parser.add_argument("--search", dest="search", \
                            default=None, metavar='[key]',
-                           help=_("search for a package marching [key]"))
+                           help=_("search for packages with name marching [key]"))
 
     def run(self):
         """ Do the real tool action here """
@@ -56,12 +57,19 @@ class TestTool(ToolBase):
             # fill the dnf sack
             self.base.fill_sack()
             # find the packages matching
-            query = self.base.sack.query()
-            result = query.available().filter(name=self.args.search)
+            result = self.contains('name', self.args.search).latest()
             print()
             self.output.listPkgs(result,_('Packages Found'), 'list')
         else:
             logger.info(_("You must specify something to search for"))
         logger.info("\n")
+
+    def contains(self, attr, needle, ignore_case=True):
+        fdict = {'%s__substr' % attr : needle}
+        if ignore_case:
+            return self.base.sack.query().filter(hawkey.ICASE, **fdict)
+        else:
+            return self.base.sack.query().filter(**fdict)
+
 if __name__ == "__main__":
     tool = TestTool()
