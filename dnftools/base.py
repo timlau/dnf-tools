@@ -70,6 +70,7 @@ class ToolBase(object):
             # setup log handler for dnf API
             self.setup_logging(logroot='dnf', logfmt = "%(asctime)s: [%(name)s] - %(message)s",loglvl=logging.DEBUG)
         else:
+            self.setup_logging(logroot='dnf', logfmt = "%(message)s",loglvl=logging.INFO)
             self.setup_logging()
         logger.debug("command line : %s " % repr(self.args))
         if self.args.setopts:
