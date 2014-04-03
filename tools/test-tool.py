@@ -13,6 +13,8 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+from __future__ import print_function
+
 import sys
 import os.path
 here = sys.path[0]
@@ -22,6 +24,7 @@ if here != '/usr/bin':
     sys.path[0] = toplevel
 
 from dnftools import _, logger, ToolBase
+from dnf.cli.output import Output
 
 class TestTool(ToolBase):
     name = "Test-tool"  # set in child class
@@ -32,6 +35,7 @@ class TestTool(ToolBase):
         super(TestTool, self).__init__()
 
     def config(self,parser):
+        self.output = Output(self.base) # borrow the dnf cli Output class (not public API)
         """ Add tool specific command line options """
         parser.add_argument("--search", dest="search", \
                            default=None, metavar='[key]',
@@ -42,13 +46,20 @@ class TestTool(ToolBase):
         logger.info('\n%s - %s \n', TestTool.name, TestTool.version)
         if self.args.search:
             logger.info(_("Search for packages matching : %s \n"),self.args.search)
-            self.setup_cache() # setup the dnf cache dir
-            self.base.read_all_repos() # read the repo config
-            self.base.fill_sack() # fill the dnf sack
+            # setup the dnf cache dir
+            self.setup_cache()
+            # read the repo config files
+            self.base.read_all_repos()
+            # Setup the repo download callbacks
+            (bar, self.base.ds_callback) = self.output.setup_progress_callbacks()
+            self.base.repos.all().set_progress_bar(bar)
+            # fill the dnf sack
+            self.base.fill_sack()
+            # find the packages matching
             query = self.base.sack.query()
             result = query.available().filter(name=self.args.search)
-            for pkg in result:
-                logger.info("found: %-40s repo :  %-20s" % (pkg, pkg.reponame))
+            print()
+            self.output.listPkgs(result,_('Packages Found'), 'list')
         else:
             logger.info(_("You must specify something to search for"))
         logger.info("\n")
